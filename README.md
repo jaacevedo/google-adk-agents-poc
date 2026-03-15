@@ -41,18 +41,19 @@ Esta **POC** fue diseñada para demostrar las capacidades de **Google ADK** en u
 flowchart TD
     A[Cliente ingresa ticket] --> B[Orquestador]
     B --> C[Analiza tipo de problema]
-    C → D{Clasificación}
-    D →|Técnico| E[Agente Resolutor<br/>+ Tool Técnica]
-    D →|Facturación| F[Agente Resolutor<br/>+ Tool Facturación]
-    E → G[GPT-4 via Proxy<br/>Diagnóstico detallado]
-    F → G
-    G → H[Solución generada]
-    H → I[👨‍💼 Auditoría Humana<br/>HITL Validation]
-    I → J{Decisión humana}
-    J →|Aprobar| K[Agente Redactor]
-    J →|Editar| L[Corrección manual] → K
-    J →|Rechazar| M[Cancelar flujo]
-    K → N[Respuesta empática final]
+    C --> D{Clasificación}
+    D -->|Técnico| E[Agente Resolutor<br/>+ Tool Técnica]
+    D -->|Facturación| F[Agente Resolutor<br/>+ Tool Facturación]
+    E --> G[GPT-4 via Proxy<br/>Diagnóstico detallado]
+    F --> G
+    G --> H[Solución generada]
+    H --> I[👨‍💼 Auditoría Humana<br/>HITL Validation]
+    I --> J{Decisión humana}
+    J -->|Aprobar| K[Agente Redactor]
+    J -->|Editar| L[Corrección manual] 
+    L --> K
+    J -->|Rechazar| M[Cancelar flujo]
+    K --> N[Respuesta empática final]
 ```
 
 ### 🧠 Agentes Especializados

@@ -201,6 +201,73 @@ python start.py --all
 # - CLI: python main.py (en otra terminal)
 ```
 
+## 🚀 Despliegue en Producción
+
+### 🚄 Railway (Recomendado para Simplicidad)
+
+```bash
+# Configuración inicial
+./setup.sh  # o setup.bat en Windows
+
+# Despliegue automático
+./deploy-railway.sh
+
+# URL: https://tu-proyecto.up.railway.app
+```
+
+**Características:**
+- Despliegue automático desde GitHub
+- Variables de entorno seguras
+- SSL/HTTPS incluido
+- Escalado automático
+- $5-20/mes + API costs
+
+### ☁️ Google Cloud Run (Recomendado para Escala)
+
+```bash
+# Configuración inicial
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+
+# Despliegue automático
+./deploy-gcp.sh
+
+# URL: https://google-adk-agents-xxx-uc.a.run.app
+```
+
+**Características:**
+- Escalado serverless automático
+- Pay-per-use pricing
+- Integración con Google AI
+- CI/CD con Cloud Build
+- Free tier generoso
+
+### 🐳 Docker Local/Self-Hosted
+
+```bash
+# Docker Compose
+docker-compose up --build
+
+# Docker directo
+docker build -t google-adk-agents .
+docker run -p 8000:8000 -e OPENAI_API_KEY=sk-xxx google-adk-agents
+```
+
+### 📋 Variables de Entorno Requeridas
+
+```bash
+# Mínimo requerido
+OPENAI_API_KEY=sk-xxxxxxxxxxxxxx
+
+# Opcionales para más modelos
+GOOGLE_API_KEY=AIxxxxxxxxxxxxxx
+CLAUDE_API_KEY=sk-antxxxxxxxxxxxxx
+```
+
+**📖 Ver [DEPLOYMENT.md](DEPLOYMENT.md) para guías detalladas paso a paso**
+# - CLI: python main.py (en otra terminal)
+```
+
 ## ⚙️ Configuración Avanzada
 
 ### 🐍 Configuración del Proyecto

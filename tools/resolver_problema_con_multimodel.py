@@ -6,7 +6,7 @@ async def resolver_problema_con_multimodel(messages: str) -> str:
     """Llama a varios modelos en paralelo y devuelve la primera respuesta válida"""
     resultados = await asyncio.gather(
         llamar_gpt4(messages, "gpt-4o-mini"),
-        llamar_gpt4(messages, "gpt-4o"),
+        ##llamar_gpt4(messages, "gpt-4o"),
         return_exceptions=True
     )
     # Filtrar errores

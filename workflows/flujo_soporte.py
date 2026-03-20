@@ -81,3 +81,29 @@ async def ejecutar_flujo_soporte(ticket_usuario: str) -> str:
     )
 
     return respuesta_final
+
+
+# ═══════════════════════════════════════════════════════
+# VERSIÓN HTTP (sin input): dividida en 2 fases para Cloud Run
+# ═══════════════════════════════════════════════════════
+
+async def ejecutar_fase1_resolucion(ticket_usuario: str) -> tuple[str, str]:
+    """Fase 1: resuelve el ticket. Devuelve (solucion, ticket_id)."""
+    ticket_id = str(uuid.uuid4())[:8]
+    print(f"\n[FASE 1] session_id: {ticket_id}_resolucion")
+    solucion = await ejecutar_con_runner(
+        agente=orquestador,
+        mensaje=f"Resuelve este ticket de soporte: {ticket_usuario}",
+        session_id=f"{ticket_id}_resolucion"
+    )
+    return solucion, ticket_id
+
+
+async def ejecutar_fase3_redaccion(solucion_aprobada: str, ticket_id: str) -> str:
+    """Fase 3: redacta la respuesta final a partir de la solución aprobada."""
+    print(f"\n[FASE 3] session_id: {ticket_id}_redaccion")
+    return await ejecutar_con_runner(
+        agente=orquestador,
+        mensaje=f"La solución fue validada por el auditor. Redacta la respuesta final para el cliente: {solucion_aprobada}",
+        session_id=f"{ticket_id}_redaccion"
+    )

@@ -3,7 +3,7 @@ import os
 from typing import Literal
 from google import genai
 import uvicorn
-from openai import AsyncOpenAI
+from openai import AsyncAzureOpenAI
 from anthropic import AsyncAnthropic
 from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -27,7 +27,12 @@ app = FastAPI(
 
 # Estado HITL en memoria (para POC). En producción usar Firestore o Redis.
 _pendientes: dict[str, str] = {}
-OPENAI_CLIENT = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-5-nano")
+OPENAI_CLIENT = AsyncAzureOpenAI(
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+    api_key=os.getenv("AZURE_OPENAI_KEY"),
+    api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
+)
 CLAUDE_CLIENT = AsyncAnthropic(api_key=os.getenv("CLAUDE_API_KEY"))
 
 def _create_gemini_client() -> genai.Client:
@@ -80,9 +85,9 @@ async def proxy_model(request: Request, model: str = Query("gpt-4o-mini")):
         print("  peticion " + model + " con mensaje: "+ str(messages)  )
 
         # --- Routing según el modelo ---
-        if model.startswith("gpt"):  # OpenAI
+        if model.startswith("gpt"):  # Azure OpenAI
             resp = await OPENAI_CLIENT.chat.completions.create(
-                model="gpt-4o-mini",
+                model=AZURE_OPENAI_DEPLOYMENT,
                 messages=messages
             )
             content = resp.choices[0].message.content

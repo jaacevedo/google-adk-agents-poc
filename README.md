@@ -380,10 +380,21 @@ az containerapp update \
 Nota importante para Azure:
 
 - Azure Container Apps no garantiza inyectar `PORT` como Cloud Run.
-- Esta plantilla configura `PORT=8080` y `ADAPTER_SERVER_URL=http://127.0.0.1:8080` para que:
+- Esta plantilla configura dos puertos:
+   - `targetPort`: puerto publico (ingress de Container Apps)
+   - `apiPort`: puerto interno de `server.py`
+- Por defecto ambos van en `8080`.
+- Tambien configura `ADAPTER_SERVER_URL=http://127.0.0.1:<apiPort>` para que:
    - FastAPI escuche en el mismo puerto que expone el ingress.
    - Las llamadas internas al adapter HTTP funcionen dentro del mismo contenedor.
 - Si estos valores faltan, la app puede quedar desplegada pero responder con timeout.
+
+Si quieres exponer `adk web` como front (puerto 8000) y mantener API interna en 8080:
+
+- `targetPort=8000`
+- `apiPort=8080`
+
+En ese caso, recuerda que `/docs` pertenece a FastAPI y quedaria en el puerto interno (no expuesto).
 
 10. Obtener URL publica
 

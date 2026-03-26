@@ -19,7 +19,8 @@ def _obtener_adapter_server_url() -> str:
         port = os.getenv("PORT", "8001")
         return f"http://127.0.0.1:{port}"
 
-    return "http://127.0.0.1:8001"
+    port = os.getenv("PORT", "8001")
+    return f"http://127.0.0.1:{port}"
 
 
 
@@ -31,6 +32,7 @@ async def llamar_gpt4(prompt: str, model: str = "gpt-4o-mini") -> str:
     # Auto-detección: localhost en desarrollo, mismo contenedor en producción
     base_url = _obtener_adapter_server_url()
 
+    #print(f"{base_url} - Llamando a GPT-4 con modelo {model} y prompt: {prompt[:50]}...")
     
     url = f"{base_url}/v1/chat/completions"
     payload = {"messages": [{"role": "user", "content": prompt}]}

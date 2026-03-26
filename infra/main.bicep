@@ -24,8 +24,11 @@ param imageName string = 'google-adk-agents-poc'
 @description('Container image tag')
 param imageTag string = 'latest'
 
-@description('Target port exposed by the app')
-param targetPort int = 8080
+@description('Ingress target port exposed publicly by Container Apps')
+param targetPort int = 8000
+
+@description('Internal port where server.py (FastAPI) listens')
+param apiPort int = 8080
 
 @description('OpenAI API key value')
 @secure()
@@ -197,11 +200,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'PORT'
-              value: string(targetPort)
+              value: string(apiPort)
             }
             {
               name: 'ADAPTER_SERVER_URL'
-              value: 'http://127.0.0.1:${targetPort}'
+              value: 'http://127.0.0.1:${apiPort}'
             }
             {
               name: 'GOOGLE_CLOUD_PROJECT'

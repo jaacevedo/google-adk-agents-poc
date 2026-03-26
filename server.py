@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from workflows.flujo_soporte import ejecutar_fase1_resolucion, ejecutar_fase3_redaccion
+from config.settings import USE_VERTEX_AI, GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
 
 load_dotenv()
 app = FastAPI(
@@ -28,8 +29,22 @@ _pendientes: dict[str, str] = {}
 OPENAI_CLIENT = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 CLAUDE_CLIENT = AsyncAnthropic(api_key=os.getenv("CLAUDE_API_KEY"))
 
-# Configure Google Genai with API key
-GEMINI_CLIENT = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+def _create_gemini_client() -> genai.Client:
+    if USE_VERTEX_AI:
+        if not GOOGLE_CLOUD_PROJECT:
+            raise RuntimeError(
+                "USE_VERTEX_AI=true pero falta GOOGLE_CLOUD_PROJECT en variables de entorno."
+            )
+        return genai.Client(
+            vertexai=True,
+            project=GOOGLE_CLOUD_PROJECT,
+            location=GOOGLE_CLOUD_LOCATION,
+        )
+
+    return genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+
+
+GEMINI_CLIENT = _create_gemini_client()
 
 
 def _build_upstream_http_error(exc: Exception) -> HTTPException:
@@ -39,6 +54,15 @@ def _build_upstream_http_error(exc: Exception) -> HTTPException:
         return HTTPException(
             status_code=502,
             detail="Fallo al llamar al proveedor Google Gemini: GOOGLE_API_KEY invalida.",
+        )
+
+    if "PermissionDenied" in message or "PERMISSION_DENIED" in message:
+        return HTTPException(
+            status_code=502,
+            detail=(
+                "Fallo de permisos en Vertex AI. Verifica que la service account de Cloud Run "
+                "tenga rol Vertex AI User (roles/aiplatform.user)."
+            ),
         )
 
     return HTTPException(

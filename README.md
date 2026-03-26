@@ -203,6 +203,225 @@ python start.py --all
 
 ## ⚙️ Configuración Avanzada
 
+### ☁️ Vertex AI en Cloud Run (Paso a Paso)
+
+Esta POC puede usar Gemini via Vertex AI para evitar depender de `GOOGLE_API_KEY`.
+Con esto, Cloud Run autentica usando su service account.
+
+1. Configura proyecto y region:
+
+```bash
+gcloud config set project TU_PROJECT_ID
+gcloud config set run/region us-central1
+```
+
+2. Habilita APIs necesarias:
+
+```bash
+gcloud services enable run.googleapis.com aiplatform.googleapis.com artifactregistry.googleapis.com
+```
+
+3. Crea service account para Cloud Run:
+
+```bash
+gcloud iam service-accounts create adk-cloudrun-sa \
+   --display-name="ADK Cloud Run Service Account"
+```
+
+4. Asigna permisos minimos para Vertex:
+
+```bash
+gcloud projects add-iam-policy-binding TU_PROJECT_ID \
+   --member="serviceAccount:adk-cloudrun-sa@TU_PROJECT_ID.iam.gserviceaccount.com" \
+   --role="roles/aiplatform.user"
+```
+
+5. Despliega configurando Vertex AI por variables de entorno:
+
+```bash
+gcloud run deploy google-adk-agents-poc \
+   --source . \
+   --platform managed \
+   --allow-unauthenticated \
+   --service-account adk-cloudrun-sa@TU_PROJECT_ID.iam.gserviceaccount.com \
+   --set-env-vars USE_VERTEX_AI=true,GOOGLE_CLOUD_PROJECT=TU_PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1,OPENAI_API_KEY=TU_OPENAI_KEY,CLAUDE_API_KEY=TU_CLAUDE_KEY
+```
+
+6. Verifica la URL y prueba Swagger:
+
+```bash
+gcloud run services describe google-adk-agents-poc --region us-central1 --format="value(status.url)"
+```
+
+Luego abre:
+
+- `https://<URL_SERVICIO>/docs`
+- `https://<URL_SERVICIO>/soporte/resolver`
+
+Notas:
+
+- Si usas Vertex AI, no necesitas `GOOGLE_API_KEY` para Gemini.
+- Si aparece `PERMISSION_DENIED`, revisa que la service account tenga `roles/aiplatform.user`.
+- Mantener `GOOGLE_CLOUD_LOCATION=us-central1` suele ser la opcion mas compatible para Gemini.
+
+### ☁️ Azure Container Apps + Bicep (Paso a Paso Completo)
+
+Esta guia despliega la API en Azure usando:
+
+- `infra/main.bicep`
+- `infra/main.parameters.json`
+- Azure Container Registry (ACR)
+- Azure Key Vault
+- Azure Container Apps
+
+Importante:
+
+- Rota todas las API keys si fueron compartidas en terminal o archivos.
+- Si tu red corporativa bloquea SSL hacia `*.azurecr.io`, usa el flujo de build remoto con `az acr build`.
+
+1. Prerrequisitos
+
+```bash
+az --version
+az bicep version
+docker --version
+```
+
+2. Login y suscripcion
+
+```bash
+az login
+az account set --subscription TU_SUBSCRIPTION_ID
+```
+
+3. Definir variables
+
+```bash
+RG=rg-adk-poc
+PARAMS_FILE=infra/main.parameters.json
+ACR_NAME=acradkpocagents
+IMAGE_NAME=google-adk-agents-poc
+IMAGE_TAG=latest
+```
+
+4. Revisar parametros de despliegue
+
+Confirma en `infra/main.parameters.json`:
+
+- `acrName` coincide con `ACR_NAME`
+- `imageName` es `google-adk-agents-poc`
+- `imageTag` es `latest`
+- `claudeApiKey` (el codigo usa `CLAUDE_API_KEY`)
+
+5. Desplegar/actualizar infraestructura
+
+```bash
+az deployment group create \
+   --resource-group $RG \
+   --template-file infra/main.bicep \
+   --parameters @$PARAMS_FILE
+```
+
+6. Validar que ACR exista
+
+```bash
+az acr show --name $ACR_NAME --resource-group $RG --output table
+```
+
+7A. Flujo normal de ACR (si no hay problemas SSL)
+
+```bash
+az acr login --name $ACR_NAME
+docker build -t ${ACR_NAME}.azurecr.io/${IMAGE_NAME}:${IMAGE_TAG} .
+docker push ${ACR_NAME}.azurecr.io/${IMAGE_NAME}:${IMAGE_TAG}
+```
+
+7B. Flujo recomendado cuando aparece `CONNECTIVITY_SSL_ERROR`
+
+Si `az acr login` o `az acr repository show-tags` falla por SSL, usa build remoto:
+
+```bash
+az acr build --registry $ACR_NAME --image ${IMAGE_NAME}:${IMAGE_TAG} .
+```
+
+Este comando construye y publica la imagen dentro de Azure, evitando `docker push` local.
+
+8. Validar que el tag exista en ACR
+
+```bash
+az acr repository show-tags \
+   --name $ACR_NAME \
+   --repository $IMAGE_NAME \
+   --output table
+```
+
+Debe aparecer `latest`.
+
+9. Aplicar imagen a Container App
+
+Opcion A (redeploy completo Bicep):
+
+```bash
+az deployment group create \
+   --resource-group $RG \
+   --template-file infra/main.bicep \
+   --parameters @$PARAMS_FILE
+```
+
+Opcion B (solo actualizar imagen):
+
+```bash
+az containerapp update \
+   --name ca-google-adk-agents-poc \
+   --resource-group $RG \
+   --image ${ACR_NAME}.azurecr.io/${IMAGE_NAME}:${IMAGE_TAG}
+```
+
+Nota importante para Azure:
+
+- Azure Container Apps no garantiza inyectar `PORT` como Cloud Run.
+- Esta plantilla configura `PORT=8080` y `ADAPTER_SERVER_URL=http://127.0.0.1:8080` para que:
+   - FastAPI escuche en el mismo puerto que expone el ingress.
+   - Las llamadas internas al adapter HTTP funcionen dentro del mismo contenedor.
+- Si estos valores faltan, la app puede quedar desplegada pero responder con timeout.
+
+10. Obtener URL publica
+
+```bash
+az containerapp show \
+   --name ca-google-adk-agents-poc \
+   --resource-group $RG \
+   --query properties.configuration.ingress.fqdn -o tsv
+```
+
+11. Probar servicio
+
+- `https://<FQDN>/docs`
+- `https://<FQDN>/openapi.json`
+
+Prueba endpoint:
+
+```bash
+curl -X POST "https://<FQDN>/soporte/resolver" \
+   -H "Content-Type: application/json" \
+   -d '{"ticket":"No puedo descargar mi factura de enero"}'
+```
+
+12. Ver logs si hay error
+
+```bash
+az containerapp logs show \
+   --name ca-google-adk-agents-poc \
+   --resource-group $RG \
+   --follow
+```
+
+Errores tipicos y solucion:
+
+- `MANIFEST_UNKNOWN`: la imagen/tag no existe en ACR. Ejecutar paso 7 y 8.
+- `CONNECTIVITY_SSL_ERROR`: usar paso 7B (`az acr build`).
+- `401/403` en proveedores IA: revisar secretos en Key Vault y parametros.
+
 ### 🐍 Configuración del Proyecto
 
 Para usar con ADK Web, el proyecto usa la convención de nombres compatible con Python:

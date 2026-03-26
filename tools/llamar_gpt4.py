@@ -9,9 +9,15 @@ def _obtener_adapter_server_url() -> str:
     if configured_url:
         return configured_url.rstrip("/")
 
-    # En plataformas serverless el proxy suele vivir en el mismo contenedor.
+    # En Cloud Run el proxy vive en el mismo contenedor en el puerto PORT.
+    if os.getenv("K_SERVICE"):
+        port = os.getenv("PORT", "8080")
+        return f"http://127.0.0.1:{port}"
+
+    # Otras plataformas serverless con puerto explicito.
     if os.getenv("RENDER") or os.getenv("RAILWAY_ENVIRONMENT"):
-        return "http://localhost:8001"
+        port = os.getenv("PORT", "8001")
+        return f"http://127.0.0.1:{port}"
 
     return "http://127.0.0.1:8001"
 

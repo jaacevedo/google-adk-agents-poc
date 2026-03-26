@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus"
+    },
+    "containerAppName": {
+      "value": "ca-google-adk-agents-poc"
+    },
+    "containerAppEnvName": {
+      "value": "cae-adk-poc"
+    },
+    "acrName": {
+      "value": "acradkpoc123"
+    },
+    "keyVaultName": {
+      "value": "kv-adk-poc-123"
+    },
+    "managedIdentityName": {
+      "value": "uai-adk-poc"
+    },
+    "imageName": {
+      "value": "google-adk-agents-poc"
+    },
+    "imageTag": {
+      "value": "latest"
+    },
+    "openAiApiKey": {
+      "value": "REPLACE_OPENAI_KEY"
+    },
+    "claudeApiKey": {
+      "value": "REPLACE_CLAUDE_KEY"
+    },
+    "googleApiKey": {
+      "value": "REPLACE_GOOGLE_KEY_OR_EMPTY"
+    },
+    "useVertexAi": {
+      "value": false
+    },
+    "gcpProjectId": {
+      "value": ""
+    },
+    "gcpLocation": {
+      "value": "us-central1"
+    }
+  }
+}

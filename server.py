@@ -8,10 +8,11 @@ from anthropic import AsyncAnthropic
 from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
-from workflows.flujo_soporte import ejecutar_fase1_resolucion, ejecutar_fase3_redaccion
-from config.settings import USE_VERTEX_AI, GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
 
 load_dotenv()
+
+from workflows.flujo_soporte import ejecutar_fase1_resolucion, ejecutar_fase3_redaccion
+from config.settings import USE_VERTEX_AI, GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
 app = FastAPI(
     title="Google ADK Agents POC API",
     description=(
@@ -150,10 +151,12 @@ class AprobarResponse(BaseModel):
 )
 async def resolver_ticket(body: TicketRequest):
     try:
+        print("\n[Endpoint] /soporte/resolver llamado con ticket: " + body.ticket)
         solucion, ticket_id = await ejecutar_fase1_resolucion(body.ticket)
         _pendientes[ticket_id] = solucion
         return {"ticket_id": ticket_id, "solucion": solucion}
     except Exception as exc:
+        print(f"[Error] Fallo en /soporte/resolver: {exc}")
         raise _build_upstream_http_error(exc) from exc
 
 

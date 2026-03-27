@@ -30,9 +30,18 @@ param targetPort int = 8000
 @description('Internal port where server.py (FastAPI) listens')
 param apiPort int = 8080
 
-@description('OpenAI API key value')
+@description('Azure OpenAI endpoint URL (e.g. https://<resource>.cognitiveservices.azure.com/)')
+param azureOpenAiEndpoint string
+
+@description('Azure OpenAI API key value')
 @secure()
-param openAiApiKey string
+param azureOpenAiApiKey string
+
+@description('Azure OpenAI deployment name used by proxy_model and wrappers')
+param azureOpenAiDeployment string = 'gpt-5-nano'
+
+@description('Azure OpenAI API version')
+param azureOpenAiApiVersion string = '2024-12-01-preview'
 
 @description('Claude API key value')
 @secure()
@@ -80,11 +89,11 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   }
 }
 
-resource openAiSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+resource azureOpenAiSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
-  name: 'OPENAI-API-KEY'
+  name: 'AZURE-OPENAI-KEY'
   properties: {
-    value: openAiApiKey
+    value: azureOpenAiApiKey
   }
 }
 
@@ -160,8 +169,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       ]
       secrets: [
         {
-          name: 'openai-key'
-          keyVaultUrl: openAiSecret.properties.secretUri
+          name: 'azure-openai-key'
+          keyVaultUrl: azureOpenAiSecret.properties.secretUri
           identity: managedIdentity.id
         }
         {
@@ -183,8 +192,20 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           image: imageRef
           env: [
             {
-              name: 'OPENAI_API_KEY'
-              secretRef: 'openai-key'
+              name: 'AZURE_OPENAI_ENDPOINT'
+              value: azureOpenAiEndpoint
+            }
+            {
+              name: 'AZURE_OPENAI_KEY'
+              secretRef: 'azure-openai-key'
+            }
+            {
+              name: 'AZURE_OPENAI_DEPLOYMENT'
+              value: azureOpenAiDeployment
+            }
+            {
+              name: 'AZURE_OPENAI_API_VERSION'
+              value: azureOpenAiApiVersion
             }
             {
               name: 'CLAUDE_API_KEY'

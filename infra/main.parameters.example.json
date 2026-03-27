@@ -26,8 +26,23 @@
     "imageTag": {
       "value": "latest"
     },
-    "openAiApiKey": {
-      "value": "REPLACE_OPENAI_KEY"
+    "targetPort": {
+      "value": 8000
+    },
+    "apiPort": {
+      "value": 8080
+    },
+    "azureOpenAiEndpoint": {
+      "value": "https://<your-resource>.cognitiveservices.azure.com/"
+    },
+    "azureOpenAiApiKey": {
+      "value": "REPLACE_AZURE_OPENAI_KEY"
+    },
+    "azureOpenAiDeployment": {
+      "value": "gpt-5-nano"
+    },
+    "azureOpenAiApiVersion": {
+      "value": "2024-12-01-preview"
     },
     "claudeApiKey": {
       "value": "REPLACE_CLAUDE_KEY"

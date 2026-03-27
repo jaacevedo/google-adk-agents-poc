@@ -10,7 +10,7 @@ Esta **POC** fue diseñada para demostrar las capacidades de **Google ADK** en u
 
 1. **🤖 Orquestación Inteligente**: Demostrar cómo un agente coordinador puede gestionar flujos complejos distribuyendo tareas a agentes especializados
 2. **🔧 Especialización de Agentes**: Mostrar agentes con responsabilidades específicas (clasificación, resolución, redacción)
-3. **🛠️ Integración de Herramientas**: Ilustrar cómo los agentes pueden invocar APIs externas (OpenAI GPT-4) de forma autónoma
+3. **🛠️ Integración de Herramientas**: Ilustrar cómo los agentes pueden invocar APIs externas (Azure OpenAI Foundry) de forma autónoma
 4. **👥 Human-in-the-Loop**: Implementar validación humana manteniendo la eficiencia del sistema automatizado
 5. **🌐 Interfaces Múltiples**: Proporcionar tanto CLI como interfaz web para diferentes casos de uso
 
@@ -18,8 +18,8 @@ Esta **POC** fue diseñada para demostrar las capacidades de **Google ADK** en u
 
 | Escenario | Agente Principal | Herramientas | Resultado |
 |-----------|------------------|--------------|-----------|
-| **Problema Técnico** | Agente Resolutor | `resolver_problema_tecnico` + GPT-4 | Diagnóstico técnico detallado |
-| **Problema Facturación** | Agente Resolutor | `resolver_problema_facturacion` + GPT-4 | Análisis financiero y solución |
+| **Problema Técnico** | Agente Resolutor | `resolver_problema_tecnico` + Azure OpenAI | Diagnóstico técnico detallado |
+| **Problema Facturación** | Agente Resolutor | `resolver_problema_facturacion` + Azure OpenAI | Análisis financiero y solución |
 | **Redacción Final** | Agente Redactor | Procesamiento interno | Respuesta empática al cliente |
 
 ### 🏆 Valor Agregado de la Arquitectura
@@ -33,7 +33,19 @@ Esta **POC** fue diseñada para demostrar las capacidades de **Google ADK** en u
 ## 🏗️ Arquitectura del Sistema
 
 **Patrón:** Orquestador + Sub-agentes + Herramientas Externas + Human-in-the-Loop  
-**Tecnologías:** Python 3.11+, Google ADK, FastAPI, OpenAI GPT-4, Gemini 2.5 Flash
+**Tecnologías:** Python 3.11+, Google ADK, FastAPI, Azure OpenAI (Foundry), Gemini 2.5 Flash
+
+### 📌 Arquitectura de IA Actual (Estado Real)
+
+La ruta de modelos `gpt-*` ahora usa **Azure AI Foundry (Hub/Project) + Azure OpenAI deployment**,
+no OpenAI API pública directa.
+
+En términos operativos:
+
+- El proxy `/v1/chat/completions` enruta `gpt-*` hacia Azure OpenAI.
+- El deployment activo se controla con `AZURE_OPENAI_DEPLOYMENT` (ejemplo: `gpt-5-nano`).
+- La conectividad se basa en `AZURE_OPENAI_ENDPOINT` + `AZURE_OPENAI_KEY` + `AZURE_OPENAI_API_VERSION`.
+- Gemini y Claude se mantienen como proveedores complementarios.
 
 ### 🎯 Flujo de Trabajo
 
@@ -41,18 +53,18 @@ Esta **POC** fue diseñada para demostrar las capacidades de **Google ADK** en u
 flowchart TD
     A[Cliente ingresa ticket] --> B[Orquestador]
     B --> C[Analiza tipo de problema]
-    C → D{Clasificación}
-    D →|Técnico| E[Agente Resolutor<br/>+ Tool Técnica]
-    D →|Facturación| F[Agente Resolutor<br/>+ Tool Facturación]
-    E → G[GPT-4 via Proxy<br/>Diagnóstico detallado]
-    F → G
-    G → H[Solución generada]
-    H → I[👨‍💼 Auditoría Humana<br/>HITL Validation]
-    I → J{Decisión humana}
-    J →|Aprobar| K[Agente Redactor]
-    J →|Editar| L[Corrección manual] → K
-    J →|Rechazar| M[Cancelar flujo]
-    K → N[Respuesta empática final]
+    C --> D{Clasificación}
+    D -->|Técnico| E[Agente Resolutor<br/>+ Tool Técnica]
+    D -->|Facturación| F[Agente Resolutor<br/>+ Tool Facturación]
+    E --> G[Azure OpenAI via Proxy<br/>Diagnóstico detallado]
+    F --> G
+    G --> H[Solución generada]
+    H --> I[👨‍💼 Auditoría Humana<br/>HITL Validation]
+    I --> J{Decisión humana}
+    J -->|Aprobar| K[Agente Redactor]
+    J -->|Editar| L[Corrección manual] --> K
+    J -->|Rechazar| M[Cancelar flujo]
+    K --> N[Respuesta empática final]
 ```
 
 ### 🧠 Agentes Especializados
@@ -75,7 +87,7 @@ google-adk-agents-poc/
 │   │
 │   ├── tools/                  # 🔧 Herramientas invocables
 │   │   ├── __init__.py
-│   │   ├── llamar_gpt4.py      # Adaptador HTTP a OpenAI
+│   │   ├── llamar_gpt4.py      # Adaptador HTTP a Azure OpenAI
 │   │   ├── resolver_problema_tecnico.py
 │   │   ├── resolver_problema_facturacion.py
 │   │   └── resolver_problema_con_multimodel.py
@@ -128,10 +140,15 @@ pip install -r requirements.txt
 Crear archivo `.env` en la raíz del proyecto:
 
 ```env
-# API Keys (requerido mínimo OPENAI_API_KEY)
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxx
-GOOGLE_API_KEY=AIxxxxxxxxxxxx          # Para Gemini (opcional)
-CLAUDE_API_KEY=sk-antxxxxxxxxxxxxx     # Para Claude (opcional)
+# Azure OpenAI Foundry (requerido para ruta gpt)
+AZURE_OPENAI_ENDPOINT=https://<tu-recurso>.cognitiveservices.azure.com/
+AZURE_OPENAI_KEY=<tu-azure-openai-key>
+AZURE_OPENAI_DEPLOYMENT=gpt-5-nano
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
+
+# Otros proveedores (opcionales)
+GOOGLE_API_KEY=AIxxxxxxxxxxxx          # Para Gemini
+CLAUDE_API_KEY=sk-antxxxxxxxxxxxxx     # Para Claude
 
 # Configuración del proxy HTTP
 PORT=8001
@@ -244,7 +261,7 @@ gcloud run deploy google-adk-agents-poc \
    --platform managed \
    --allow-unauthenticated \
    --service-account adk-cloudrun-sa@TU_PROJECT_ID.iam.gserviceaccount.com \
-   --set-env-vars USE_VERTEX_AI=true,GOOGLE_CLOUD_PROJECT=TU_PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1,OPENAI_API_KEY=TU_OPENAI_KEY,CLAUDE_API_KEY=TU_CLAUDE_KEY
+   --set-env-vars USE_VERTEX_AI=true,GOOGLE_CLOUD_PROJECT=TU_PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1,AZURE_OPENAI_ENDPOINT=TU_AZURE_ENDPOINT,AZURE_OPENAI_KEY=TU_AZURE_KEY,AZURE_OPENAI_DEPLOYMENT=gpt-5-nano,AZURE_OPENAI_API_VERSION=2024-12-01-preview,CLAUDE_API_KEY=TU_CLAUDE_KEY
 ```
 
 6. Verifica la URL y prueba Swagger:
@@ -311,6 +328,10 @@ Confirma en `infra/main.parameters.json`:
 - `acrName` coincide con `ACR_NAME`
 - `imageName` es `google-adk-agents-poc`
 - `imageTag` es `latest`
+- `azureOpenAiEndpoint` apunta a tu recurso Foundry
+- `azureOpenAiApiKey` tiene la key correcta
+- `azureOpenAiDeployment` coincide con tu deployment (ejemplo: `gpt-5-nano`)
+- `azureOpenAiApiVersion` coincide con la version habilitada en el recurso
 - `claudeApiKey` (el codigo usa `CLAUDE_API_KEY`)
 
 5. Desplegar/actualizar infraestructura
@@ -383,18 +404,15 @@ Nota importante para Azure:
 - Esta plantilla configura dos puertos:
    - `targetPort`: puerto publico (ingress de Container Apps)
    - `apiPort`: puerto interno de `server.py`
-- Por defecto ambos van en `8080`.
+- Configuracion actual de esta POC:
+   - `targetPort=8000` (ADK Web, unico puerto expuesto publicamente)
+   - `apiPort=8080` (solo interno dentro del contenedor)
 - Tambien configura `ADAPTER_SERVER_URL=http://127.0.0.1:<apiPort>` para que:
-   - FastAPI escuche en el mismo puerto que expone el ingress.
+   - FastAPI escuche en el puerto interno.
    - Las llamadas internas al adapter HTTP funcionen dentro del mismo contenedor.
 - Si estos valores faltan, la app puede quedar desplegada pero responder con timeout.
 
-Si quieres exponer `adk web` como front (puerto 8000) y mantener API interna en 8080:
-
-- `targetPort=8000`
-- `apiPort=8080`
-
-En ese caso, recuerda que `/docs` pertenece a FastAPI y quedaria en el puerto interno (no expuesto).
+Recuerda: `/docs`, `/openapi.json` y `/soporte/*` pertenecen a FastAPI en `apiPort=8080`, por lo que no quedan expuestos publicamente cuando el ingress sale por `8000`.
 
 10. Obtener URL publica
 
@@ -407,16 +425,18 @@ az containerapp show \
 
 11. Probar servicio
 
-- `https://<FQDN>/docs`
-- `https://<FQDN>/openapi.json`
+- `https://<FQDN>/` (ADK Web expuesto por `targetPort=8000`)
 
-Prueba endpoint:
+Validacion funcional publica:
 
 ```bash
-curl -X POST "https://<FQDN>/soporte/resolver" \
-   -H "Content-Type: application/json" \
-   -d '{"ticket":"No puedo descargar mi factura de enero"}'
+# Abrir ADK Web en navegador
+start https://<FQDN>/
 ```
+
+Validacion API interna (opcional):
+
+- Ejecutar dentro del contenedor/entorno interno o exponer temporalmente `apiPort` si se requiere prueba externa de `/soporte/*`.
 
 12. Ver logs si hay error
 
@@ -432,6 +452,61 @@ Errores tipicos y solucion:
 - `MANIFEST_UNKNOWN`: la imagen/tag no existe en ACR. Ejecutar paso 7 y 8.
 - `CONNECTIVITY_SSL_ERROR`: usar paso 7B (`az acr build`).
 - `401/403` en proveedores IA: revisar secretos en Key Vault y parametros.
+
+### ✅ Artefactos y Características a Solicitar para Despliegue en Azure
+
+Para que otro equipo (plataforma/cloud/security) pueda habilitar el despliegue sin fricción,
+solicita este paquete mínimo.
+
+Artefactos de infraestructura:
+
+- Resource Group objetivo (o permiso para crearlo).
+- Azure Container Registry (ACR) habilitado para pull desde Container Apps.
+- Azure Key Vault con RBAC habilitado.
+- User Assigned Managed Identity para Container App.
+- Azure Container Apps Environment.
+- Azure Container App con ingress externo y puertos definidos.
+- Plantilla IaC aprobada: `infra/main.bicep` y archivo de parámetros del entorno.
+
+Artefactos de aplicación:
+
+- Imagen publicada en ACR: `<acr>.azurecr.io/google-adk-agents-poc:<tag>`.
+- Variables de entorno funcionales:
+   - `AZURE_OPENAI_ENDPOINT`
+   - `AZURE_OPENAI_KEY` (vía secreto)
+   - `AZURE_OPENAI_DEPLOYMENT`
+   - `AZURE_OPENAI_API_VERSION`
+   - `CLAUDE_API_KEY` (si aplica)
+   - `GOOGLE_API_KEY` o `USE_VERTEX_AI=true` + `GOOGLE_CLOUD_PROJECT` + `GOOGLE_CLOUD_LOCATION`
+   - `PORT` y `ADAPTER_SERVER_URL`
+- Secretos cargados en Key Vault y enlazados en Container App.
+
+Permisos/RBAC mínimos:
+
+- Managed Identity con rol `AcrPull` sobre ACR.
+- Managed Identity con rol `Key Vault Secrets User` sobre Key Vault.
+- Operador de despliegue con permisos para:
+   - `Microsoft.App/*`
+   - `Microsoft.ContainerRegistry/*`
+   - `Microsoft.KeyVault/*`
+   - `Microsoft.ManagedIdentity/*`
+   - `Microsoft.Authorization/roleAssignments/*`
+
+Capacidades de red y seguridad:
+
+- Salida HTTPS permitida desde Container Apps hacia:
+   - Endpoint de Azure OpenAI/Foundry.
+   - Servicios externos de IA adicionales (si se usan).
+- Política para evitar hardcodeo de credenciales en código o parameters productivos.
+- Rotación periódica de secretos (Key Vault).
+
+Validaciones de aceptación (go-live checklist):
+
+- Health del contenedor correcto y arranque sin errores de variables.
+- Endpoint público responde en puerto 8000 (ruta funcional definida por el front expuesto).
+- Flujo HITL completo validado (`/soporte/resolver` -> `/soporte/aprobar`).
+- Logs centralizados accesibles (Container Apps logs).
+- Evidencia de rollback: tag anterior disponible en ACR.
 
 ### 🐍 Configuración del Proyecto
 
@@ -455,7 +530,7 @@ El sistema incluye un proxy HTTP que soporta múltiples proveedores de IA:
 
 ```python
 # Modelos soportados via proxy HTTP
-- "gpt-4o-mini", "gpt-4o", "gpt-4-turbo"  # OpenAI
+- "gpt-*"                                   # Azure OpenAI (Foundry) via deployment configurado
 - "gemini-2.5-flash"                      # Google Gemini  
 - "claude-sonnet-4-6"                     # Anthropic Claude
 ```

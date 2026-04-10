@@ -1,6 +1,7 @@
 import uuid
 from config.settings import APP_NAME, USER_ID, SESSION_SERVICE
 from agents.orquestador import orquestador
+from agents.agente_redactor import agente_redactor
 from google.adk.runners import Runner
 from google.genai import types
 
@@ -11,17 +12,21 @@ async def ejecutar_con_runner(agente, mensaje: str, session_id: str) -> str:
     await SESSION_SERVICE.create_session(app_name=APP_NAME, user_id=USER_ID, session_id=session_id)
     runner = Runner(agent=agente, app_name=APP_NAME, session_service=SESSION_SERVICE)
     ultima_respuesta = None
-    async for event in runner.run_async(user_id=USER_ID, session_id=session_id, new_message=construir_mensaje(mensaje)):
+
+    async for event in runner.run_async(
+        user_id=USER_ID,
+        session_id=session_id,
+        new_message=construir_mensaje(mensaje)
+    ):
         if event.is_final_response() and event.content and event.content.parts:
             partes_texto = [p.text for p in event.content.parts if hasattr(p, "text") and p.text]
             if partes_texto:
                 ultima_respuesta = "\n".join(partes_texto)
                 if hasattr(event, "author") and event.author:
-                    # Preview corto solo en log de seguimiento.
-                    # La respuesta COMPLETA se muestra en la auditoría humana.
                     preview = ultima_respuesta[:80]
                     sufijo = f"... (+{len(ultima_respuesta)-80} chars)" if len(ultima_respuesta) > 80 else ""
                     print(f"   💬 [{event.author}]: {preview}{sufijo}")
+
     return ultima_respuesta or "Sin respuesta."
 
 # ═══════════════════════════════════════════════════════
@@ -75,8 +80,8 @@ async def ejecutar_flujo_soporte(ticket_usuario: str) -> str:
     print("\n[FASE 3] Orquestador coordinando redacción final...\n")
 
     respuesta_final = await ejecutar_con_runner(
-        agente=orquestador,
-        mensaje=f"La solución fue validada por el auditor. Redacta la respuesta final para el cliente: {solucion_aprobada}",
+        agente=agente_redactor,  # ← directo
+        mensaje=solucion_aprobada,
         session_id=f"{ticket_id}_redaccion"
     )
 

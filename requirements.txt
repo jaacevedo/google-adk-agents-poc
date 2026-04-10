@@ -1,6 +1,2 @@
 google-adk
-openai
-anthropic
-fastapi
-uvicorn
 python-dotenv

@@ -1,4 +1,3 @@
-#from tools import llamar_gpt4
 # ═══════════════════════════════════════════════════════
 # TOOLS — Funciones que los agentes pueden invocar solos
 # El orquestador decide cuándo y cuál usar.
@@ -8,7 +7,7 @@ from .resolver_problema_con_multimodel import resolver_problema_con_multimodel
 
 async def resolver_problema_facturacion(descripcion: str) -> str:
     """
-    Consulta al experto externo GPT-4 para resolver problemas de
+    Consulta al experto externo gemini para resolver problemas de
     facturación, cobros, pagos o disputas financieras.
 
     Args:
@@ -26,5 +25,4 @@ Analiza el siguiente problema y proporciona:
 
 Problema: {descripcion}
 """
-    #return await llamar_gpt4(prompt)
     return await resolver_problema_con_multimodel(prompt)

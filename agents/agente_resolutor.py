@@ -1,18 +1,16 @@
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
-from model_wrapper.wrappers import AzureFoundryWrapper
 from tools.resolver_problema_tecnico import resolver_problema_tecnico
 from tools.resolver_problema_facturacion import resolver_problema_facturacion
 # ═══════════════════════════════════════════════════════
 # AGENTES
 # ═══════════════════════════════════════════════════════
-modelo_azure_central = AzureFoundryWrapper()
 # --- Agente Resolutor (sub-agente con tools) ---
 # Recibe el ticket ya clasificado y decide qué tool usar.
 # Habla con GPT-4 a través de las tools sin intervención de Python.
 agente_resolutor = LlmAgent(
     name="AgenteResolutor",
-    model=modelo_azure_central,#"gemini-2.5-flash",
+    model="gemini-2.5-flash",
     tools=[
         FunctionTool(resolver_problema_tecnico),
         FunctionTool(resolver_problema_facturacion),
